@@ -1,12 +1,17 @@
 #include <cstdlib>
 #include <vector>
 #include <iostream>
+#include <cmath>
+#include <stdio.h>
+#include <fstream>
+#include <iostream>
 
 const int MAX_COORDINATE = 500;
 const int CITIES = 20;
 const int MAX_POPULATION = 50;
 const double MUTATION_RATE = 0.015;
 const int TOURNAMENT_SIZE = 5;
+const int GENERATIONS = 100;
 
 class City
 {
@@ -18,14 +23,31 @@ class City
             x = std::rand() % MAX_COORDINATE;
             y = std::rand() % MAX_COORDINATE;
         }
+        double distance(const City& c)
+        {
+            int _x = x - c.get_x();
+            int _y = y - c.get_y();
+
+            return sqrt(_x*_x + _y*_y);
+        }
+
+        int get_x() const {return x;}
+        int get_y() const {return y;}
+
+        friend std::ostream& operator<< (std::ostream& os, const City& c);
 };
+
+std::ostream& operator<< (std::ostream& os, const City& c)
+{
+    os << c.x << " " << c.y;
+}
 
 class Tour
 {
     private:
         std::vector<City> tour;
         int fitness;
-        int distance;
+        double distance;
     public:
         Tour()
         {
@@ -34,17 +56,53 @@ class Tour
             {
                 tour.push_back(City());
             }
+            calc_fitness();
         }
         Tour(std::vector<City> _tour)
         {
             tour = _tour;
+            calc_fitness();
+        }
+
+        void operator= (Tour& _tour)
+        {
+            tour = _tour.get_tour();
+            fitness = _tour.get_fitness();
+            distance = _tour.get_dist();
+        }
+
+        void calc_fitness()
+        {
+            for(int i = 1; i< tour.size(); i++)
+            {
+                distance += tour.at(i).distance(tour.at(i-1));
+            }
+            fitness = (int)distance;
+        }
+
+        void print (const char* file_name)
+        {
+            std::ofstream file;
+            file.open(file_name);
+
+            for(int i = 0; i<tour.size(); i++)
+            {
+                file << tour.at(i);
+            }
+
+            file.close();
         }
         int get_size() const {return tour.size();}
         City get_city(int id) const {return tour.at(id);}
         std::vector<City> get_tour() const {return tour;}
         int get_fitness() {return fitness;}
+        double get_dist() { return distance; }
 
-        void set_city(City& c, int id) { tour[id] = c;}
+        void set_city(City& c, int id)
+        {
+            tour[id] = c;
+            calc_fitness();
+        }
 };
 
 class Evolution
@@ -92,18 +150,13 @@ class Evolution
             new_tour.reserve(father.get_size());
 
             for(int i = 0; i<beg; i++)
-            {
-                new_tour.at(i) = mother.get_tour().at(i);
-            }
+                new_tour.push_back(mother.get_tour().at(i));
 
-            new_tour.insert(new_tour.begin() + beg,
-                            father.get_tour().begin() + beg,
-                            father.get_tour().begin() + end);
+            for(int i = beg; i < end; i++)
+                new_tour.push_back(father.get_tour().at(i));
 
             for(int i = end; i < father.get_size(); i++)
-            {
-                new_tour.at(i) = mother.get_tour().at(i);
-            }
+                new_tour.push_back(mother.get_tour().at(i));
 
             return Tour(new_tour);
         }
@@ -131,7 +184,7 @@ class Evolution
             for(int i= 0; i<TOURNAMENT_SIZE; i++)
             {
                 int id = rand() % population.size();
-                tournament.at(i) = population.at(id);
+                tournament.push_back(population.at(id));
             }
 
             //get fittest
@@ -149,11 +202,37 @@ class Evolution
 
             return max_fit;
         }
+
+        Tour get_fittest ()
+        {
+            Tour max = population.at(0);
+            for(int i= 1; i<population.size(); i++)
+            {
+                if(population.at(i).get_fitness() > max.get_fitness())
+                {
+                    max = population.at(i);
+                }
+            }
+
+            return max;
+        }
 };
 
 int main()
 {
-    std::cout << (double)1 / rand() << std::endl;
+    FILE *pipe = popen("gnuplot -persist", "w");
+
+    Evolution evolution;
+    for(int i = 0; i<GENERATIONS; i++)
+    {
+        evolution.evolve();
+        evolution.get_fittest().print("tour.txt");
+        fprintf(pipe, "plot 'tour.txt' using 1:2 with lines\n");
+        fflush(pipe);
+        getchar();
+    }
+
+    fclose(pipe);
 
     return 0;
 }
