@@ -11,7 +11,7 @@ const int CITIES = 20;
 const int MAX_POPULATION = 50;
 const double MUTATION_RATE = 0.015;
 const int TOURNAMENT_SIZE = 5;
-const int GENERATIONS = 100;
+const int GENERATIONS = 1000;
 
 class City
 {
@@ -87,7 +87,8 @@ class Tour
 
             for(int i = 0; i<tour.size(); i++)
             {
-                file << tour.at(i);
+                std::cout << tour.at(i);
+                file << tour.at(i) << std::endl;
             }
 
             file.close();
