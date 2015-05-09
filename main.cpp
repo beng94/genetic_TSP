@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <fstream>
 #include <iostream>
+#include <algorithm>
 
 const int MAX_COORDINATE = 500;
 const int CITIES = 20;
@@ -34,6 +35,14 @@ class City
         int get_x() const {return x;}
         int get_y() const {return y;}
 
+        bool operator== (const City& c)
+        {
+            return (x == c.get_x() && y == c.get_y());
+        }
+        bool operator != (const City& c)
+        {
+            return !(*this == c);
+        }
         friend std::ostream& operator<< (std::ostream& os, const City& c);
 };
 
@@ -51,7 +60,7 @@ class Tour
     public:
         Tour()
         {
-            tour.reserve(CITIES);
+            //tour.reserve(CITIES);
             for(int i = 0; i < CITIES; i++)
             {
                 tour.push_back(City());
@@ -69,6 +78,15 @@ class Tour
             tour = _tour.get_tour();
             fitness = _tour.get_fitness();
             distance = _tour.get_dist();
+        }
+
+        bool operator== (Tour& _tour)
+        {
+            for(int i = 0; i < tour.size(); i++)
+            {
+                if(_tour.get_city(i) != tour.at(i)) return false;
+            }
+            return true;
         }
 
         void calc_fitness()
@@ -93,6 +111,11 @@ class Tour
 
             file.close();
         }
+
+        void shuffle ()
+        {
+            std::random_shuffle(tour.begin(), tour.end());
+        }
         int get_size() const {return tour.size();}
         City get_city(int id) const {return tour.at(id);}
         std::vector<City> get_tour() const {return tour;}
@@ -101,7 +124,7 @@ class Tour
 
         void set_city(City& c, int id)
         {
-            tour[id] = c;
+            tour.at(id) = c;
             calc_fitness();
         }
 };
@@ -113,10 +136,12 @@ class Evolution
     public:
         Evolution()
         {
-            population.reserve(MAX_POPULATION);
+            Tour new_tour;
+            //population.reserve(MAX_POPULATION);
             for(int i = 0; i<MAX_POPULATION; i++)
             {
-                population.push_back(Tour());
+                new_tour.shuffle();
+                population.push_back(new_tour);
             }
         }
         void evolve()
@@ -126,13 +151,14 @@ class Evolution
                 Tour father = tournament_selection();
                 Tour mother = tournament_selection();
                 Tour child = crossover(father, mother);
+                if(child == mother || child == father) continue;
 
                 population.at(i) = child;
             }
 
             for(int i= 0; i<population.size(); i++)
             {
-                mutate(population.at(i));
+                //mutate(population.at(i));
             }
         }
         Tour crossover(const Tour& father, const Tour& mother)
@@ -145,6 +171,12 @@ class Evolution
                 int tmp = end;
                 end = beg;
                 beg = end;
+            }
+            if(end == beg)
+            {
+                if(beg > 0) --beg;
+                else if(end < father.get_size()) ++end;
+                else --end;
             }
 
             std::vector<City> new_tour;
@@ -168,7 +200,10 @@ class Evolution
                 if((1 / rand()) < MUTATION_RATE)
                 {
                     //swap cities
+                    //TODO: use std::swap if possible
                     int id = rand() % tour.get_size();
+                    if(id == tour.get_size() - 1) continue;
+
                     City a = tour.get_city(i);
                     City b = tour.get_city(id);
 
@@ -217,6 +252,8 @@ class Evolution
 
             return max;
         }
+
+        Tour get_tour(int id) {return population.at(id);}
 };
 
 int main()
@@ -224,11 +261,12 @@ int main()
     FILE *pipe = popen("gnuplot -persist", "w");
 
     Evolution evolution;
+    evolution.get_tour(0).print("points.txt");
     for(int i = 0; i<GENERATIONS; i++)
     {
         evolution.evolve();
         evolution.get_fittest().print("tour.txt");
-        fprintf(pipe, "plot 'tour.txt' using 1:2 with lines\n");
+        fprintf(pipe, "plot 'points.txt' using 1:2, 'tour.txt' using 1:2 with lines\n");
         fflush(pipe);
         getchar();
     }
