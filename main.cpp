@@ -105,7 +105,7 @@ class Tour
 
             for(int i = 0; i<tour.size(); i++)
             {
-                std::cout << tour.at(i);
+                std::cout << '(' << i << ')' << " " << tour.at(i) << " ";
                 file << tour.at(i) << std::endl;
             }
 
@@ -144,16 +144,50 @@ class Evolution
                 population.push_back(new_tour);
             }
         }
-        void evolve()
+        void evolve(FILE* pipe)
         {
             for(int i=0 ; i<population.size(); i++)
             {
+                population.at(i).print("tour.txt");
+                fprintf(pipe, "plot 'points.txt' using 1:2, 'tour.txt' using 1:2 with lines\n");
+                fflush(pipe);
+                getchar();
+
                 Tour father = tournament_selection();
+                father.print("tour.txt");
+                std::cout << "father: \n";
+                fprintf(pipe, "plot 'points.txt' using 1:2, 'tour.txt' using 1:2 with lines\n");
+                fflush(pipe);
+                getchar();
+
                 Tour mother = tournament_selection();
+
+                std::cout << "Tournament selection 159\n";
+                population.at(i).print("tour.txt");
+                fprintf(pipe, "plot 'points.txt' using 1:2, 'tour.txt' using 1:2 with lines\n");
+                fflush(pipe);
+                getchar();
+
                 Tour child = crossover(father, mother);
                 if(child == mother || child == father) continue;
 
+
+                std::cout << "New child crated 170\n";
+                population.at(i).print("tour.txt");
+                fprintf(pipe, "plot 'points.txt' using 1:2, 'tour.txt' using 1:2 with lines\n");
+                fflush(pipe);
+                getchar();
+
                 population.at(i) = child;
+
+                std::cout << "New child added 177\n";
+                population.at(i).print("tour.txt");
+                fprintf(pipe, "plot 'points.txt' using 1:2, 'tour.txt' using 1:2 with lines\n");
+                fflush(pipe);
+                getchar();
+
+
+
             }
 
             for(int i= 0; i<population.size(); i++)
@@ -161,10 +195,12 @@ class Evolution
                 //mutate(population.at(i));
             }
         }
-        Tour crossover(const Tour& father, const Tour& mother)
+        Tour crossover(const Tour& father, const Tour& mother) const
         {
             int beg = rand() % father.get_size();
             int end = rand() % father.get_size();
+
+            std::cout << "beg: " << beg << " end: " << end << std::endl;
 
             if(end < beg)
             {
@@ -180,7 +216,7 @@ class Evolution
             }
 
             std::vector<City> new_tour;
-            new_tour.reserve(father.get_size());
+            //new_tour.reserve(father.get_size());
 
             for(int i = 0; i<beg; i++)
                 new_tour.push_back(mother.get_tour().at(i));
@@ -191,6 +227,18 @@ class Evolution
             for(int i = end; i < father.get_size(); i++)
                 new_tour.push_back(mother.get_tour().at(i));
 
+            std::cout << "new_tour:\n" << std::endl;
+            for(int i= 0; i<new_tour.size(); i++)
+            {
+                std::cout << new_tour.at(i) << " ";
+            }
+
+            Tour t (new_tour);
+            std::cout << "copied tour\n" << std::endl;
+            for(int i=0; i< t.get_size(); i++)
+            {
+                std::cout << t.get_tour().at(i) << " ";
+            }
             return Tour(new_tour);
         }
         void mutate(Tour& tour)
@@ -264,8 +312,8 @@ int main()
     evolution.get_tour(0).print("points.txt");
     for(int i = 0; i<GENERATIONS; i++)
     {
-        evolution.evolve();
-        evolution.get_fittest().print("tour.txt");
+        evolution.evolve(pipe);
+        evolution.get_tour(0).print("tour.txt");
         fprintf(pipe, "plot 'points.txt' using 1:2, 'tour.txt' using 1:2 with lines\n");
         fflush(pipe);
         getchar();
